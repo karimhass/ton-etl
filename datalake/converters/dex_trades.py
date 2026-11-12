@@ -29,11 +29,13 @@ EVENT_TYPE_LAUNCH = "launch" # launch from bonding curve
 
 # allows to override internal DEX name
 DEX_MAPPING = {
-    "ston.fi_v2": "ston.fi"
+    "ston.fi_v2": "ston.fi",
+    "tonco_v2": "tonco"
 }
 
 DEX_VERSION_MAPPING = {
     "ston.fi_v2": 2,
+    "tonco_v2": 2,
     "dedust": 2 # only Protocol 2.0
 }
 

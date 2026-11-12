@@ -4,7 +4,7 @@ from loguru import logger
 from db import DB
 from pytoniq_core import Address
 from model.dexpool import DexPool
-from model.dexswap import DEX_DEDUST, DEX_MEGATON, DEX_STON, DEX_STON_V2, DEX_TONCO, DEX_COFFEE, DEX_BIDASK_CLMM, DEX_BIDASK_DAMM, DEX_MOON, DEX_DEDUST_CPMM_V3
+from model.dexswap import DEX_DEDUST, DEX_MEGATON, DEX_STON, DEX_STON_V2, DEX_TONCO, DEX_TONCO_V2, DEX_COFFEE, DEX_BIDASK_CLMM, DEX_BIDASK_DAMM, DEX_MOON, DEX_DEDUST_CPMM_V3
 from model.dedust import read_dedust_asset
 from model.coffee import read_coffee_asset
 from parsers.message.swap_volume import estimate_tvl
@@ -68,7 +68,7 @@ class TVLPoolStateParser(EmulatorParser):
         pool.last_updated = obj['timestamp']
 
         # total supply is required for all cases except TONCO, Bidask DLMM
-        if pool.platform not in [DEX_TONCO, DEX_BIDASK_CLMM, DEX_DEDUST_CPMM_V3]:
+        if pool.platform not in [DEX_TONCO, DEX_TONCO_V2, DEX_BIDASK_CLMM, DEX_DEDUST_CPMM_V3]:
             try:
                 pool.total_supply, _, _, _, _= self._execute_method(emulator, 'get_jetton_data', [], db, obj)
             except EmulatorException as e:
@@ -135,9 +135,11 @@ class TVLPoolStateParser(EmulatorParser):
             current_jetton_left = jetton_a_address.load_address()
             current_jetton_right = jetton_b_address.load_address()
             pool.lp_fee = swap_fee / 1e4 if swap_fee is not None else None
-        elif pool.platform == DEX_TONCO:
+        elif pool.platform in [DEX_TONCO, DEX_TONCO_V2]:
+            # V2 appends configuration fields; the first 25 positions are unchanged.
+            pool_state = self._execute_method(emulator, 'getPoolStateAndConfiguration', [], db, obj)
             _router, _admin, _admin2, j0_wallet, j1_wallet, j0_master, j1_master, _, _, fee_base, fee_protocol, fee_user, _, \
-                price, liq, _, _, _, _, _, pool.reserves_left, pool.reserves_right, nftv3items_active, _, _ = self._execute_method(emulator, 'getPoolStateAndConfiguration', [], db, obj)
+                price, liq, _, _, _, _, _, pool.reserves_left, pool.reserves_right, nftv3items_active, _, _ = pool_state[:25]
             # total supply is not applicable for TONCO, because LP is not a jetton. But we can use number of active NFT positions as a proxy
             pool.total_supply = nftv3items_active
             current_jetton_left = j0_master.load_address()
