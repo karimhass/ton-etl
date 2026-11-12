@@ -385,3 +385,10 @@ CREATE TABLE IF NOT EXISTS parsed.extra_nft_sales
     created timestamp NULL,
     updated timestamp NULL
 );
+
+-- TONCO V2 swaps and pool discovery use a separate platform for versioning.
+DO $$ BEGIN
+    ALTER TYPE public.dex_name ADD VALUE 'tonco_v2' AFTER 'tonco';
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;

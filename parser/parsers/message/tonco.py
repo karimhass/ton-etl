@@ -2,7 +2,7 @@ from model.parser import NonCriticalParserError, Parser, TOPIC_MESSAGES
 from loguru import logger
 from db import DB
 from pytoniq_core import Cell, Address
-from model.dexswap import DEX_STON, DEX_STON_V2, DEX_TONCO, DexSwapParsed
+from model.dexswap import DEX_STON, DEX_STON_V2, DEX_TONCO, DEX_TONCO_V2, DexSwapParsed
 from parsers.message.swap_volume import estimate_volume
 
 """
@@ -12,6 +12,7 @@ processed successfully it means the swap was successful.
 """
 class TONCOSwap(Parser):
     ROUTER = Parser.uf2raw('EQC_-t0nCnOFMdp7E7qPxAOCbCWGFz-e3pwxb6tTvFmshjt5')
+    ROUTER_V2 = Parser.uf2raw('EQAT0nCO20vC6gzpyUJbWI7ELnRvAAB3VHJ3Z1jXQsw6KGJ4')
     
     def topics(self):
         return [TOPIC_MESSAGES]
@@ -20,10 +21,11 @@ class TONCOSwap(Parser):
         # only internal messages sent to the router
         return obj.get("opcode", None) == Parser.opcode_signed(0xa1daa96d) and \
             obj.get("direction", None) == "in" and \
-            obj.get("destination", None) == self.ROUTER
+            obj.get("destination", None) in (self.ROUTER, self.ROUTER_V2)
     
 
     def handle_internal(self, obj, db: DB):
+        is_v2 = obj.get('destination') == self.ROUTER_V2
         tx_hash = Parser.require(obj.get('tx_hash', None))
         tx = Parser.require(db.is_tx_successful(tx_hash))
         if not tx:
@@ -44,10 +46,18 @@ class TONCOSwap(Parser):
         logger.info(f"query_id: {query_id}, owner0: {owner0}, owner1: {owner1}, exit_code: {exit_code}, seqno: {seqno}")
         if coinsinfo_cell:
             coinsinfo_cell = coinsinfo_cell.begin_parse()
-            amount0 = coinsinfo_cell.load_coins()
-            jetton0_address = coinsinfo_cell.load_address()
-            amount1 = coinsinfo_cell.load_coins()
-            jetton1_address = coinsinfo_cell.load_address()
+            if is_v2:
+                # V2 moves both wallet addresses before the amounts.
+                # https://docs.tonco.io/en/technical-reference/contracts-v2/router.html
+                jetton0_address = coinsinfo_cell.load_address()
+                jetton1_address = coinsinfo_cell.load_address()
+                amount0 = coinsinfo_cell.load_coins()
+                amount1 = coinsinfo_cell.load_coins()
+            else:
+                amount0 = coinsinfo_cell.load_coins()
+                jetton0_address = coinsinfo_cell.load_address()
+                amount1 = coinsinfo_cell.load_coins()
+                jetton1_address = coinsinfo_cell.load_address()
             logger.info(f"amount0: {amount0}, jetton0_address: {jetton0_address}, amount1: {amount1}, jetton1_address: {jetton1_address}")
         else:
             logger.info(f"No coinsinfo_cell for {tx_hash}")
@@ -76,7 +86,14 @@ class TONCOSwap(Parser):
             logger.warning(f"Parent message for tonco swap is {swap_op}, expected 0xa7fb58f8 {tx_hash}")
             return
         swap_query_id = pool_swap.load_uint(64)
+        if is_v2:
+            # V2 adds source_type, from_user and a direction bit.
+            # https://docs.tonco.io/en/technical-reference/contracts-v2/pool.html
+            pool_swap.load_uint(4)  # source_type
+            pool_swap.load_address()  # from_user
         swap_owner_address = pool_swap.load_address()
+        if is_v2:
+            pool_swap.load_uint(1)  # zeroForOne
         swap_source_wallet = pool_swap.load_address()
         swap_ref1 = pool_swap.load_ref().begin_parse()
         swap_input_amount = swap_ref1.load_coins()
@@ -97,12 +114,15 @@ class TONCOSwap(Parser):
             src_master = jetton1_master
             dst_master = jetton0_master
             dst_amount = amount0
+        else:
+            logger.warning(f"Unknown source wallet in tonco swap {tx_hash}")
+            return
 
         swap = DexSwapParsed(
             tx_hash=Parser.require(obj.get('tx_hash', None)),
             msg_hash=Parser.require(obj.get('msg_hash', None)),
             trace_id=Parser.require(obj.get('trace_id', None)),
-            platform=DEX_TONCO,
+            platform=DEX_TONCO_V2 if is_v2 else DEX_TONCO,
             swap_utime=Parser.require(obj.get('created_at', None)),
             swap_user=owner0,
             swap_pool=Parser.require(obj.get('source', None)),

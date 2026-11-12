@@ -19,6 +19,7 @@ pTONv2 = Parser.uf2raw('EQBnGWMCf3-FZZq1W4IWcWiGAc3PHuZ0_H-7sad2oY00o83S') # sto
 WTON_Megaton = Parser.uf2raw('EQCajaUU1XXSAjTD-xOV7pE49fGtg4q8kF3ELCOJtGvQFQ2C')
 WTON_Stonfi = Parser.uf2raw('EQDQoc5M3Bh8eWFephi9bClhevelbZZvWhkqdo80XuY_0qXv') # deprecated
 wTTon_TONCO = Parser.uf2raw('EQCUnExmdgwAKADi-j2KPKThyQqTc7U650cgM0g78UzZXn9J')
+wGRAM_TONCO = Parser.uf2raw('EQBwGRAMjTY_CMNWKhzBeHA-VPjp2rD9vB3rwepG2co5eScs')
 TON = Parser.uf2raw('EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c')
 stTON = Parser.uf2raw('EQDNhy-nxYFgUqzfUzImBEP67JqsyMIcyk2S5_RwNNEYku0k')
 tsTON = Parser.uf2raw('EQC98_qAmNEptUtPc7W6xdHh_ZHrBUFpw5Ft_IzNU20QAJav')
@@ -28,7 +29,7 @@ oUSDC = Parser.uf2raw('EQC61IQRl0_la95t27xhIpjxZt32vl1QQVF2UgTNuvD18W-4')
 
 
 STABLES = [USDT, USDe, jUSDT, jUSDC]
-TONS = [pTON, TON, pTONv2, WTON_Megaton, WTON_Stonfi, wTTon_TONCO]
+TONS = [pTON, TON, pTONv2, WTON_Megaton, WTON_Stonfi, wTTon_TONCO, wGRAM_TONCO]
 LSDS = [stTON, tsTON]
 USD_LSDS = [tsUSDe]
 ORBIT_STABLES = [oUSDT, oUSDC]
